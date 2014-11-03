@@ -7,6 +7,7 @@ from __future__ import division
 from pyoptsparse import Optimization as OptProblem
 from pyoptsparse import OPT as Optimizer
 import numpy
+import time
 
 
 class Optimization(object):
@@ -22,7 +23,7 @@ class Optimization(object):
         """ Returns unique string for the variable """
         return var_id[0] + '_' + str(var_id[1])
 
-    def _add_var(self, typ, var, value=0.0,
+    def _add_var(self, typ, var, value=0.0, scale=1.0,
                  lower=None, upper=None,
                  get_jacs=None, linear=False):
         """ Wrapped by next three methods """
@@ -30,15 +31,16 @@ class Optimization(object):
         var_name = self._get_name(var_id)
         self._variables[typ][var_name] = {'ID': var_id,
                                           'value': value,
+                                          'scale': scale,
                                           'lower': lower,
                                           'upper': upper,
                                           'get_jacs': get_jacs,
                                           'linear': linear}
 
-    def add_design_variable(self, var, value=0.0, 
+    def add_design_variable(self, var, value=None, scale=1.0, 
                             lower=None, upper=None):
         """ Self-explanatory; part of API """
-        self._add_var('dv', var, value=value,
+        self._add_var('dv', var, value=value, scale=scale,
                       lower=lower, upper=upper)
 
     def add_objective(self, var):
@@ -113,6 +115,8 @@ class Optimization(object):
             get_jacs = func['get_jacs']
             nfunc = system.vec['u'][func_id].shape[0]
 
+            time_start = time.time()
+
             sens_dict[func_name] = {}
             if func['get_jacs'] is None:
                 for dv_name in variables['dv'].keys():
@@ -138,6 +142,9 @@ class Optimization(object):
                     dv_name = self._get_name(dv_id)
                     sens_dict[func_name][dv_name] \
                         = jacs[dv_var]
+
+            print 'Done function:', func_id, time.time() - time_start
+            print
 
         #print 'DVs:'
         #print dv_dict
@@ -169,11 +176,15 @@ class Optimization(object):
         for dv_name in variables['dv'].keys():
             dv = variables['dv'][dv_name]
             dv_id = dv['ID']
-            value = dv['value']
+            if dv['value'] is not None:
+                value = dv['value']
+            else:
+                value = system.vec['u'](dv_id)
+            scale = dv['scale']
             lower = dv['lower']
             upper = dv['upper']
             size = system.vec['u'](dv_id).shape[0]
-            opt_prob.addVarGroup(dv_name, size, value=value,
+            opt_prob.addVarGroup(dv_name, size, value=value, scale=scale,
                                  lower=lower, upper=upper)
         opt_prob.finalizeDesignVariables()
         for func_name in variables['func'].keys():

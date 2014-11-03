@@ -211,4 +211,4 @@ class SysGammaBspline(ExplicitSystem):
 
     def get_jacs(self):
         jac_gamma = self.kwargs['jac_gamma']
-        return {'h_pt': jac_gamma * 1e3/1e-1}
+        return {('h_pt',self.copy): jac_gamma * 1e3/1e-1}

@@ -19,6 +19,7 @@ from __future__ import division
 import sys
 from framework import *
 import numpy
+import scipy.sparse
 
 
 class SysHi(ExplicitSystem):
@@ -55,6 +56,13 @@ class SysHi(ExplicitSystem):
             if self.get_id('h') in args:
                 dalt[0] += dalt_i[0]
 
+    def get_jacs(self):
+        num_elem = self.kwargs['num_elem']
+        jac_h = self.kwargs['jac_h']
+        jac = scipy.sparse.csr_matrix(([1],([0],[0])),
+                                      shape=(1,num_elem+1))
+        return {('h_pt',self.copy): jac * jac_h}
+
 class SysHf(ExplicitSystem):
     """ final altitude point used for constraints """
 
@@ -89,6 +97,13 @@ class SysHf(ExplicitSystem):
             dalt[0] = 0.0
             if self.get_id('h') in args:
                 dalt[0] += dalt_f[0]
+
+    def get_jacs(self):
+        num_elem = self.kwargs['num_elem']
+        jac_h = self.kwargs['jac_h']
+        jac = scipy.sparse.csr_matrix(([1],([0],[num_elem])),
+                                      shape=(1,num_elem+1))
+        return {('h_pt',self.copy): jac * jac_h}
 
 class SysTmin(ExplicitSystem):
     """ KS constraint function for minimum throttle """
