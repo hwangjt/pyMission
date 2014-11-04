@@ -382,13 +382,13 @@ else:
 
 
 
-    main.compute(output=True)
+    main.set_initial_var_values()
 
 
 
-    opt = Optimization(main)
-    opt.add_objective('profit')
     for copy in xrange(num_routes * num_new_ac):
+        opt = Optimization(main(('mission', copy)))
+        opt.add_objective(('fuelburn', copy))
         opt.add_design_variable(('h_pt', copy), #scale=5e-2,
                                 lower=0.0, upper=15.0)
         opt.add_constraint(('h_i', copy), lower=0.0, upper=0.0,
@@ -399,9 +399,10 @@ else:
         opt.add_constraint(('Tmax', copy), upper=0.0)
         opt.add_constraint(('gamma', copy), lower=gamma_lb, upper=gamma_ub,
                            get_jacs=main(('gamma', copy)).get_jacs, linear=True)
-    opt('SNOPT')
-    call(['cp', 'SNOPT_summary.out', 'traj_SNOPT.out'])
-    call(['cp', 'hist.hst', 'traj_hist.hst'])
+        opt('SNOPT')
+        call(['mv', 'SNOPT_summary.out', 'results/traj_'+str(copy)+'_SNOPT.out'])
+        call(['mv', 'hist.hst', folder_path+'/traj_'+str(copy)+'_hist.hst'])
+        call(['rm', 'SNOPT_print.out'])
 
 
 
@@ -423,8 +424,9 @@ else:
         opt.add_constraint(('gamma', copy), lower=gamma_lb, upper=gamma_ub,
                            get_jacs=main(('gamma', copy)).get_jacs, linear=True)
     opt('SNOPT')
-    call(['cp', 'SNOPT_summary.out', 'relaxed_SNOPT.out'])
-    call(['cp', 'hist.hst', 'relaxed_hist.hst'])
+    call(['mv', 'SNOPT_summary.out', 'results/relaxed_SNOPT.out'])
+    call(['mv', 'hist.hst', folder_path+'/relaxed_hist.hst'])
+    call(['rm', 'SNOPT_print.out'])
 
 
 
@@ -448,5 +450,6 @@ else:
                            get_jacs=main(('gamma', copy)).get_jacs, linear=True)
 
     opt('SNOPT')
-    call(['cp', 'SNOPT_summary.out', 'discrete_SNOPT.out'])
-    call(['cp', 'hist.hst', 'discrete_hist.hst'])
+    call(['mv', 'SNOPT_summary.out', 'results/discrete_SNOPT.out'])
+    call(['mv', 'hist.hst', folder_path+'/discrete_hist.hst'])
+    call(['rm', 'SNOPT_print.out'])

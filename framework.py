@@ -532,8 +532,8 @@ class System(object):
         for elemsystem in self.subsystems['elem']:
             sys = elemsystem.name, elemsystem.copy
             for arg in self.vec['dp'][sys]:
-                if self.variables[arg] is not None:
-                    self.vec['dp'][sys][arg][:] = 0.0  
+#                if self.variables[arg] is not None:
+                self.vec['dp'][sys][arg][:] = 0.0  
 
         self.rhs_vec.array[:] = 0.0
 

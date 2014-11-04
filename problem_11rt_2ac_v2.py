@@ -67,5 +67,5 @@ rt_data['range'] = numpy.array([399.98, 600.44, 1200.95,    1751.41,    2508.94,
 rt_data['demand'] = numpy.array([41,1009,89,661,1041,358,146,97,447,194,263])
 
 #
-rt_data['num_elem'] = 500 * numpy.ones(11, int)
-rt_data['num_cp'] = 50 * numpy.ones(11, int)
+rt_data['num_elem'] = numpy.linspace(100, 400, 11).astype(int) # 500 * numpy.ones(11, int)
+rt_data['num_cp'] = numpy.linspace(20, 80, 11).astype(int) # 50 * numpy.ones(11, int)
