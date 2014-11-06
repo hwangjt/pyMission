@@ -27,4 +27,21 @@ for file_name in [sys.argv[2]]:
             print 'h_pt' + str(copy) + ':', numpy.around(sol['h_pt_' + str(copy)], 2)
             copy += 1
 
+    index = f['last']
+    while 'funcs' not in f[index]:
+        index -= 1
+    sol = f[index]['funcs']
+    print
+    funcs = ['pax_con_0', 'ac_con_0', 'int_con_0']
+    copy = 0
+    while 'gamma_' + str(copy) in sol:
+        funcs.append('Tmin_' + str(copy))
+        funcs.append('Tmax_' + str(copy))
+        funcs.append('h_i_' + str(copy))
+        funcs.append('h_f_' + str(copy))
+        funcs.append('gamma_' + str(copy))
+        copy += 1
+    for func in funcs:
+        print func, numpy.min(sol[func]), numpy.max(sol[func])
+
     f.close()

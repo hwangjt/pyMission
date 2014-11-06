@@ -30,6 +30,7 @@ gamma_lb = numpy.tan(-35.0 * (numpy.pi/180.0))/1e-1
 gamma_ub = numpy.tan(35.0 * (numpy.pi/180.0))/1e-1
                 
 execfile('problem_11rt_2ac_v2.py')
+#execfile('problem_3rt_2ac.py')
 
 ############################
 # INITIALIZE MISSION OBJECTS
@@ -351,7 +352,8 @@ if False:
     print
     print
     print
-    main.compute_derivatives('rev', ('h_i',0), output=True)
+    #for ind in xrange(11):
+    #    main.compute_derivatives('rev', ('pax_con',0), ind, output=True)
     print main.vec['u']
     main.check_derivatives_all(elemsys_ids=['CL_tar', 'CT_tar', 'time', 'profit', 'pax_con', 'ac_con', 'int_con'])
     print main.vec['u'].array.shape[0]
@@ -410,7 +412,8 @@ else:
     opt.add_objective('profit')
     opt.add_design_variable('pax/flight', lower=0, upper=pax_upper)
     opt.add_design_variable('flights/day', lower=0, upper=10)
-    opt.add_constraint('pax_con', lower=0.1*demand, upper=demand)
+    opt.add_constraint('pax_con', lower=0.1*demand, upper=demand,
+                       get_jacs=main('pax_con').get_jacs)
     opt.add_constraint('ac_con', upper=avail)
     for copy in xrange(num_routes * num_new_ac):
         opt.add_design_variable(('h_pt', copy), #scale=5e-2,
@@ -434,9 +437,11 @@ else:
     opt.add_objective('profit')
     opt.add_design_variable('pax/flight', lower=0, upper=pax_upper)
     opt.add_design_variable('flights/day', lower=0, upper=10)
-    opt.add_constraint('pax_con', lower=0.1*demand, upper=demand)
+    opt.add_constraint('pax_con', lower=0.1*demand, upper=demand,
+                       get_jacs=main('pax_con').get_jacs)
     opt.add_constraint('ac_con', upper=avail)
-    opt.add_constraint('int_con', lower=0, upper=0)
+    opt.add_constraint('int_con', lower=0, upper=0,
+                       get_jacs=main('int_con').get_jacs)
     for copy in xrange(num_routes * num_new_ac):
         opt.add_design_variable(('h_pt', copy), #scale=5e-2,
                                 lower=0.0, upper=15.0)

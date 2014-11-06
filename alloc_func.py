@@ -1,6 +1,7 @@
 from __future__ import division
 from framework import *
 import numpy
+import scipy.sparse
 
 
 class IntegerCon(ExplicitSystem):
@@ -39,6 +40,13 @@ class IntegerCon(ExplicitSystem):
             dflights[:] = 0.0
             if self.get_id('flights/day') in args:
                 dflights[:] += numpy.pi * numpy.cos(numpy.pi * flights) * dcon
+
+    def get_jacs(self):
+        lins = range(self.size)
+        data = numpy.pi * numpy.cos(numpy.pi * self.vec['p']('flights/day'))
+        jac = scipy.sparse.csr_matrix((data, (lins, lins)),
+                                      shape=(self.size, self.size))
+        return {'flights/day': jac}
 
 
 class Profit(ExplicitSystem):
@@ -197,6 +205,14 @@ class PaxCon(ExplicitSystem):
         self._declare_argument('pax/flight', indices=ind)
         self._declare_argument('flights/day', indices=ind)
 
+        self.rows = numpy.zeros(num_routes * num_ac, int)
+        self.cols = numpy.zeros(num_routes * num_ac, int)
+        for irt in xrange(num_routes):
+            for iac in xrange(num_ac):
+                copy = irt + iac * num_routes
+                self.rows[copy] = irt
+                self.cols[copy] = copy
+
     def apply_G(self):
         misc_data, ac_data, rt_data = self.misc_data, self.ac_data, self.rt_data
         num_routes, num_ac = self.num_routes, self.num_ac
@@ -241,6 +257,20 @@ class PaxCon(ExplicitSystem):
                         dpax_flt[irt, iac] += flt_day[irt, iac] * dpax_con[irt]
                     if self.get_id('flights/day') in args:
                         dflt_day[irt, iac] += pax_flt[irt, iac] * dpax_con[irt]
+
+    def get_jacs(self):
+        num_routes, num_ac = self.num_routes, self.num_ac
+        rows, cols = self.rows, self.cols
+
+        data = self.vec['p']('pax/flight')
+        jac_f = scipy.sparse.csr_matrix((data, (rows, cols)),
+                                        shape=(num_routes, num_routes*num_ac))
+
+        data = self.vec['p']('flights/day')
+        jac_p = scipy.sparse.csr_matrix((data, (rows, cols)),
+                                        shape=(num_routes, num_routes*num_ac))
+        return {'flights/day': jac_f, 'pax/flight': jac_p}
+
 
 class AircraftCon(ExplicitSystem):
 

@@ -33,6 +33,12 @@ class SysHi(ExplicitSystem):
         self._declare_variable('h_i')
         self._declare_argument('h', indices=[0])
 
+        num_elem = self.kwargs['num_elem']
+        jac_h = self.kwargs['jac_h']
+        jac = scipy.sparse.csr_matrix(([1],([0],[0])),
+                                      shape=(1,num_elem+1))
+        self.jac = jac * jac_h
+
     def apply_G(self):
         """ assign system to the initial altitude point """
 
@@ -57,11 +63,7 @@ class SysHi(ExplicitSystem):
                 dalt[0] += dalt_i[0]
 
     def get_jacs(self):
-        num_elem = self.kwargs['num_elem']
-        jac_h = self.kwargs['jac_h']
-        jac = scipy.sparse.csr_matrix(([1],([0],[0])),
-                                      shape=(1,num_elem+1))
-        return {('h_pt',self.copy): jac * jac_h}
+        return {('h_pt', self.copy): self.jac}
 
 class SysHf(ExplicitSystem):
     """ final altitude point used for constraints """
@@ -74,6 +76,12 @@ class SysHf(ExplicitSystem):
         num_elem = self.kwargs['num_elem']
         self._declare_variable('h_f')
         self._declare_argument('h', indices=[num_elem])
+
+        num_elem = self.kwargs['num_elem']
+        jac_h = self.kwargs['jac_h']
+        jac = scipy.sparse.csr_matrix(([1],([0],[num_elem])),
+                                      shape=(1,num_elem+1))
+        self.jac = jac * jac_h
 
     def apply_G(self):
         """ assign system to the final altitude point """
@@ -99,11 +107,7 @@ class SysHf(ExplicitSystem):
                 dalt[0] += dalt_f[0]
 
     def get_jacs(self):
-        num_elem = self.kwargs['num_elem']
-        jac_h = self.kwargs['jac_h']
-        jac = scipy.sparse.csr_matrix(([1],([0],[num_elem])),
-                                      shape=(1,num_elem+1))
-        return {('h_pt',self.copy): jac * jac_h}
+        return {('h_pt', self.copy): self.jac}
 
 class SysTmin(ExplicitSystem):
     """ KS constraint function for minimum throttle """
