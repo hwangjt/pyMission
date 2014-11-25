@@ -77,6 +77,32 @@ class SysCLTar(ExplicitSystem):
                      (0.5*rho[:]*speed[:]**2*wing_area) - \
                      thrust_c[:]*numpy.sin(alpha[:])
 
+    def linearize(self):
+        pvec = self.vec['p']
+        ac_w = self.ac_weight * 1e6
+        wing_area = self.wing_area * 1e2
+        speed = pvec('v') * 1e2
+        rho = pvec('rho')
+        fuel_w = pvec('fuel_w') * 1e5
+        gamma = pvec('gamma') * 1e-1
+        thrust_c = pvec('CT_tar') * 1e-1
+        alpha = pvec('alpha') * 1e-1
+        pax_flight = pvec(('pax/flight', 0))
+        wt_pax = self.wt_pax
+
+        self.dlift_dv = 2*(ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
+                        (0.5*rho[:]*speed[:]**3*wing_area)
+        self.dlift_drho = (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
+                          (0.5*rho[:]**2*speed[:]**2*wing_area)
+        self.dlift_dfuel = numpy.cos(gamma[:]) /\
+                           (0.5*rho[:]*speed[:]**2*wing_area)
+        self.dlift_dpax = wt_pax * numpy.cos(gamma[:]) /\
+                          (0.5*rho[:]*speed[:]**2*wing_area)
+        self.dlift_dgamma = (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.sin(gamma[:]) /\
+                            (0.5*rho[:]*speed[:]**2*wing_area)
+        self.dlift_dct = numpy.sin(alpha[:])
+        self.dlift_dalpha = thrust_c[:]*numpy.cos(alpha[:])
+
     def apply_dGdp(self, args):
         """ compute lift coefficient derivatives wrt weight of aircraft,
             wing area, velocity, density, fuel weight, flight path angle,
@@ -110,31 +136,25 @@ class SysCLTar(ExplicitSystem):
         if self.mode == 'fwd':
             dlift_c[:] = 0.0
             if self.get_id('v') in args:
-                dlift_c[:] += -2*(ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
-                              (0.5*rho[:]*speed[:]**3*wing_area) * dspeed[:] *\
+                dlift_c[:] += -self.dlift_dv * dspeed[:] *\
                               1e2
             if self.get_id('rho') in args:
-                dlift_c[:] += -(ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
-                              (0.5*rho[:]**2*speed[:]**2*wing_area) * drho[:]
+                dlift_c[:] += -self.dlift_drho * drho[:]
             if self.get_id('fuel_w') in args:
-                dlift_c[:] += numpy.cos(gamma[:]) /\
-                              (0.5*rho[:]*speed[:]**2*wing_area) *\
+                dlift_c[:] += self.dlift_dfuel *\
                               dfuel_w[:] * 1e5
             if self.get_id(('pax/flight',0)) in args:
-                dlift_c[:] += wt_pax * numpy.cos(gamma[:]) /\
-                              (0.5*rho[:]*speed[:]**2*wing_area) *\
+                dlift_c[:] += self.dlift_dpax *\
                               dpax_flight
             if self.get_id('gamma') in args:
-                dlift_c[:] += -(ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.sin(gamma[:]) /\
-                              (0.5*rho[:]*speed[:]**2*wing_area) * dgamma[:] *\
+                dlift_c[:] += -self.dlift_dgamma * dgamma[:] *\
                               1e-1
             if self.get_id('CT_tar') in args:
-                dlift_c[:] += -numpy.sin(alpha[:]) * dthrust_c[:] * 1e-1
+                dlift_c[:] += -self.dlift_dct * dthrust_c[:] * 1e-1
             if self.get_id('alpha') in args:
-                dlift_c[:] += -thrust_c[:]*numpy.cos(alpha[:]) * dalpha[:] *\
+                dlift_c[:] += -self.dlift_dalpha * dalpha[:] *\
                               1e-1
-
-        if self.mode == 'rev':
+        elif self.mode == 'rev':
             dspeed[:] = 0.0
             drho[:] = 0.0
             dfuel_w[:] = 0.0
@@ -143,26 +163,19 @@ class SysCLTar(ExplicitSystem):
             dalpha[:] = 0.0
             dpax_flight[0] = 0.0
             if self.get_id('v') in args:
-                dspeed[:] += -2*(ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
-                    (0.5*rho[:]*speed[:]**3*wing_area) * dlift_c[:] * 1e2
+                dspeed[:] += -self.dlift_dv * dlift_c[:] * 1e2
             if self.get_id('rho') in args:
-                drho[:] += -(ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
-                    (0.5*rho[:]**2*speed[:]**2*wing_area) * dlift_c[:]
+                drho[:] += -self.dlift_drho * dlift_c[:]
             if self.get_id('fuel_w') in args:
-                dfuel_w[:] += numpy.cos(gamma[:]) /\
-                    (0.5*rho[:]*speed[:]**2*wing_area) * dlift_c[:] * 1e5
+                dfuel_w[:] += self.dlift_dfuel * dlift_c[:] * 1e5
             if self.get_id(('pax/flight',0)) in args:
-                dpax_flight[0] += numpy.sum(wt_pax * numpy.cos(gamma[:]) /\
-                              (0.5*rho[:]*speed[:]**2*wing_area) *\
-                              dlift_c[:])
+                dpax_flight[0] += numpy.sum(self.dlift_dpax * dlift_c[:])
             if self.get_id('gamma') in args:
-                dgamma[:] += -(ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.sin(gamma[:]) /\
-                    (0.5*rho[:]*speed[:]**2*wing_area) * dlift_c[:] * 1e-1
+                dgamma[:] += -self.dlift_dgamma * dlift_c[:] * 1e-1
             if self.get_id('CT_tar') in args:
-                dthrust_c[:] += -numpy.sin(alpha[:]) * dlift_c[:] * 1e-1
+                dthrust_c[:] += -self.dlift_dct * dlift_c[:] * 1e-1
             if self.get_id('alpha') in args:
-                dalpha[:] += -thrust_c[:]*numpy.cos(alpha[:]) * dlift_c[:] *\
-                             1e-1
+                dalpha[:] += -self.dlift_dalpha * dlift_c[:] * 1e-1
 
 
 class SysCTTar(ExplicitSystem):
@@ -223,6 +236,42 @@ class SysCTTar(ExplicitSystem):
                        (0.5*rho[:]*speed[:]**2*wing_area*numpy.cos(alpha[:]))) /\
                        1e-1
 
+    def linearize(self):
+        pvec = self.vec['p']
+
+        ac_w = self.ac_weight * 1e6
+        wing_area = self.wing_area * 1e2
+        speed = pvec('v') * 1e2
+        rho = pvec('rho')
+        fuel_w = pvec('fuel_w') * 1e5
+        gamma = pvec('gamma') * 1e-1
+        drag_c = pvec('CD') * 1e-1
+        alpha = pvec('alpha') * 1e-1
+        pax_flight = pvec(('pax/flight', 0))
+        wt_pax = self.wt_pax
+        
+        self.dthrust_dv = 2*(ac_w + fuel_w[:] + wt_pax * pax_flight) * numpy.sin(gamma[:]) /\
+                          (0.5*rho[:]*speed[:]**3*wing_area* \
+                           numpy.cos(alpha[:]))
+        self.dthrust_drho = (ac_w + fuel_w[:] + wt_pax * pax_flight) * numpy.sin(gamma[:]) /\
+                            (0.5*rho[:]**2*speed[:]**2*wing_area* \
+                             numpy.cos(alpha[:]))
+        self.dthrust_dfuel = numpy.sin(gamma[:]) /\
+                             (0.5*rho[:]*speed[:]**2*wing_area* \
+                              numpy.cos(alpha[:]))
+        self.dthrust_dpax = wt_pax * numpy.sin(gamma[:]) /\
+                            (0.5*rho[:]*speed[:]**2*wing_area* \
+                             numpy.cos(alpha[:]))
+        self.dthrust_dgamma = (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
+                              (0.5*rho[:]*speed[:]**2*wing_area* \
+                               numpy.cos(alpha[:]))
+        self.dthrust_dcd = 1/numpy.cos(alpha[:])
+        self.dthrust_dalpha = (drag_c[:]*numpy.sin(alpha[:])/\
+                               (numpy.cos(alpha[:]))**2 \
+                               + (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.sin(gamma[:])* \
+                               numpy.sin(alpha[:])/(0.5*rho[:]*speed[:]**2* \
+                                                    wing_area * (numpy.cos(alpha[:]))**2))
+
     def apply_dGdp(self, args):
         """ compute thrust coefficient derivatives wrt weight of aircraft,
             wing area, velocity, density, fuel weight, flight path angle,
@@ -256,36 +305,19 @@ class SysCTTar(ExplicitSystem):
         if self.mode == 'fwd':
             dthrust_c[:] = 0.0
             if self.get_id('v') in args:
-                dthrust_c[:] += -2*(ac_w + fuel_w[:] + wt_pax * pax_flight) * numpy.sin(gamma[:]) /\
-                                (0.5*rho[:]*speed[:]**3*wing_area* \
-                                 numpy.cos(alpha[:])) * dspeed * 1e2/1e-1
+                dthrust_c[:] += -self.dthrust_dv * dspeed * 1e2/1e-1
             if self.get_id('rho') in args:
-                dthrust_c[:] += -(ac_w + fuel_w[:] + wt_pax * pax_flight) * numpy.sin(gamma[:]) /\
-                                (0.5*rho[:]**2*speed[:]**2*wing_area* \
-                                 numpy.cos(alpha[:])) * drho / 1e-1
+                dthrust_c[:] += -self.dthrust_drho * drho / 1e-1
             if self.get_id('fuel_w') in args:
-                dthrust_c[:] += numpy.sin(gamma[:]) /\
-                                (0.5*rho[:]*speed[:]**2*wing_area* \
-                                 numpy.cos(alpha[:])) * dfuel_w * 1e5/1e-1
+                dthrust_c[:] += self.dthrust_dfuel * dfuel_w * 1e5/1e-1
             if self.get_id(('pax/flight',0)) in args:
-                dthrust_c[:] += wt_pax * numpy.sin(gamma[:]) /\
-                                (0.5*rho[:]*speed[:]**2*wing_area* \
-                                 numpy.cos(alpha[:])) * dpax_flight / 1e-1
+                dthrust_c[:] += self.dthrust_dpax * dpax_flight / 1e-1
             if self.get_id('gamma') in args:
-                dthrust_c[:] += (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
-                                (0.5*rho[:]*speed[:]**2*wing_area* \
-                                 numpy.cos(alpha[:])) * dgamma * 1e-1/1e-1
+                dthrust_c[:] += self.dthrust_dgamma * dgamma * 1e-1/1e-1
             if self.get_id('CD') in args:
-                dthrust_c[:] += 1/numpy.cos(alpha[:]) * ddrag_c * 1e-1/1e-1
+                dthrust_c[:] += self.dthrust_dcd * ddrag_c * 1e-1/1e-1
             if self.get_id('alpha') in args:
-                dthrust_c[:] += (drag_c[:]*numpy.sin(alpha[:])/\
-                                 (numpy.cos(alpha[:]))**2 \
-                                 + (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.sin(gamma[:])* \
-                                 numpy.sin(alpha[:])/(0.5*rho[:]*speed[:]**2* \
-                                                      wing_area* \
-                                                      (numpy.cos(
-                                                          alpha[:]))**2)) \
-                    * dalpha * 1e-1/1e-1
+                dthrust_c[:] += self.dthrust_dalpha * dalpha * 1e-1/1e-1
 
         if self.mode == 'rev':
             dspeed[:] = 0.0
@@ -296,35 +328,19 @@ class SysCTTar(ExplicitSystem):
             dalpha[:] = 0.0
             dpax_flight[0] = 0.0
             if self.get_id('v') in args:
-                dspeed[:] += -2*(ac_w + fuel_w[:] + wt_pax * pax_flight) * numpy.sin(gamma[:]) /\
-                         (0.5*rho[:]*speed[:]**3*wing_area* \
-                          numpy.cos(alpha[:])) * dthrust_c * 1e2/1e-1
+                dspeed[:] += -self.dthrust_dv * dthrust_c * 1e2/1e-1
             if self.get_id('rho') in args:
-                drho[:] += -(ac_w + fuel_w[:] + wt_pax * pax_flight) * numpy.sin(gamma[:]) /\
-                           (0.5*rho[:]**2*speed[:]**2*wing_area* \
-                            numpy.cos(alpha[:])) * dthrust_c  /1e-1
+                drho[:] += -self.dthrust_drho * dthrust_c  /1e-1
             if self.get_id('fuel_w') in args:
-                dfuel_w[:] += numpy.sin(gamma[:]) /\
-                          (0.5*rho[:]*speed[:]**2*wing_area* \
-                           numpy.cos(alpha[:])) * dthrust_c * 1e5/1e-1
+                dfuel_w[:] += self.dthrust_dfuel * dthrust_c * 1e5/1e-1
             if self.get_id(('pax/flight',0)) in args:
-                dpax_flight[0] += numpy.sum(wt_pax * numpy.sin(gamma[:]) /\
-                                (0.5*rho[:]*speed[:]**2*wing_area* \
-                                 numpy.cos(alpha[:])) * dthrust_c[:]) / 1e-1
+                dpax_flight[0] += numpy.sum(self.dthrust_dpax * dthrust_c) / 1e-1
             if self.get_id('gamma') in args:
-                dgamma[:] += (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.cos(gamma[:]) /\
-                             (0.5*rho[:]*speed[:]**2*wing_area* \
-                              numpy.cos(alpha[:])) * dthrust_c * 1e-1/1e-1
+                dgamma[:] += self.dthrust_dgamma * dthrust_c * 1e-1/1e-1
             if self.get_id('CD') in args:
-                ddrag_c[:] += 1/numpy.cos(alpha[:]) * dthrust_c * 1e-1/1e-1
+                ddrag_c[:] += self.dthrust_dcd * dthrust_c * 1e-1/1e-1
             if self.get_id('alpha') in args:
-                dalpha[:] += ((drag_c[:]*numpy.sin(alpha[:])/
-                               (numpy.cos(alpha[:]))**2
-                               + (ac_w + fuel_w[:] + wt_pax * pax_flight)*numpy.sin(gamma[:])*
-                               numpy.sin(alpha[:])/(0.5*rho[:]*speed[:]**2* \
-                                                    wing_area*
-                                                    (numpy.cos(alpha[:]))**2)) \
-                                  * dthrust_c) * 1e-1/1e-1
+                dalpha[:] += self.dthrust_dalpha * dthrust_c * 1e-1/1e-1
 
 
 class SysFuelWeight(ExplicitSystem):

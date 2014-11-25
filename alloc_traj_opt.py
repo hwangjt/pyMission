@@ -186,8 +186,8 @@ for irt in xrange(num_routes):
                                           GL_GS_atol=1e-9,#10,
                                           GL_NT_rtol=1e-9,#14,
                                           GL_NT_atol=1e-9,#14,
-                                          NL_rtol=1e-9,
-                                          NL_atol=1e-9,
+                                          NL_rtol=1e-12,
+                                          NL_atol=1e-12,
                                           LN_rtol=1e-20,#14,
                                           LN_atol=1e-14,#14,
                                           PC_rtol=1e-6,
@@ -352,10 +352,10 @@ if False:
     print
     print
     print
-    #for ind in xrange(11):
-    #    main.compute_derivatives('rev', ('pax_con',0), ind, output=True)
-    print main.vec['u']
-    main.check_derivatives_all(elemsys_ids=['CL_tar', 'CT_tar', 'time', 'profit', 'pax_con', 'ac_con', 'int_con'])
+    for ind in xrange(11):
+        main.compute_derivatives('rev', ('pax_con',0), ind, output=True)
+    #print main.vec['u']
+    main.check_derivatives_all()#elemsys_ids=['CL_tar', 'CT_tar', 'time', 'profit', 'pax_con', 'ac_con', 'int_con', 'Tmin', 'Tmax'])
     print main.vec['u'].array.shape[0]
 else:
     pax_upper = numpy.zeros(num_routes * num_ac)
@@ -402,9 +402,9 @@ else:
         opt.add_constraint(('gamma', copy), lower=gamma_lb, upper=gamma_ub,
                            get_jacs=main(('gamma', copy)).get_jacs, linear=True)
         opt('SNOPT')
-        call(['mv', 'SNOPT_summary.out', 'results/traj_'+str(copy)+'_SNOPT.out'])
+        call(['mv', 'SNOPT_print.out', 'results/traj_'+str(copy)+'_SNOPT.out'])
         call(['mv', 'hist.hst', folder_path+'/traj_'+str(copy)+'_hist.hst'])
-        call(['rm', 'SNOPT_print.out'])
+        call(['rm', 'SNOPT_summary.out'])
 
 
 
@@ -422,14 +422,14 @@ else:
                            get_jacs=main(('h_i', copy)).get_jacs, linear=True)
         opt.add_constraint(('h_f', copy), lower=0.0, upper=0.0,
                            get_jacs=main(('h_f', copy)).get_jacs, linear=True)
-        opt.add_constraint(('Tmin', copy), upper=0.0)
-        opt.add_constraint(('Tmax', copy), upper=0.0)
+        opt.add_constraint(('Tmin', copy), upper=0.0, sys=main(('mission', copy)))
+        opt.add_constraint(('Tmax', copy), upper=0.0, sys=main(('mission', copy)))
         opt.add_constraint(('gamma', copy), lower=gamma_lb, upper=gamma_ub,
                            get_jacs=main(('gamma', copy)).get_jacs, linear=True)
     opt('SNOPT')
-    call(['mv', 'SNOPT_summary.out', 'results/relaxed_SNOPT.out'])
+    call(['mv', 'SNOPT_print.out', 'results/relaxed_SNOPT.out'])
     call(['mv', 'hist.hst', folder_path+'/relaxed_hist.hst'])
-    call(['rm', 'SNOPT_print.out'])
+    call(['rm', 'SNOPT_summary.out'])
 
 
 
@@ -449,12 +449,12 @@ else:
                            get_jacs=main(('h_i', copy)).get_jacs, linear=True)
         opt.add_constraint(('h_f', copy), lower=0.0, upper=0.0,
                            get_jacs=main(('h_f', copy)).get_jacs, linear=True)
-        opt.add_constraint(('Tmin', copy), upper=0.0)
-        opt.add_constraint(('Tmax', copy), upper=0.0)
+        opt.add_constraint(('Tmin', copy), upper=0.0, sys=main(('mission', copy)))
+        opt.add_constraint(('Tmax', copy), upper=0.0, sys=main(('mission', copy)))
         opt.add_constraint(('gamma', copy), lower=gamma_lb, upper=gamma_ub,
                            get_jacs=main(('gamma', copy)).get_jacs, linear=True)
 
     opt('SNOPT')
-    call(['mv', 'SNOPT_summary.out', 'results/discrete_SNOPT.out'])
+    call(['mv', 'SNOPT_print.out', 'results/discrete_SNOPT.out'])
     call(['mv', 'hist.hst', folder_path+'/discrete_hist.hst'])
-    call(['rm', 'SNOPT_print.out'])
+    call(['rm', 'SNOPT_summary.out'])

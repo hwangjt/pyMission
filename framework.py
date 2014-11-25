@@ -1009,6 +1009,7 @@ class Solver(object):
         self.info = ''
         self.alpha = 0
         self.space = ''
+        self.counter = 0
 
     def __call__(self, ilimit=10, atol=1e-6, rtol=1e-4, space=''):
         """ Runs the iterator; overwritten for some solvers """
@@ -1018,13 +1019,13 @@ class Solver(object):
     def _iterator(self, ilimit, atol, rtol):
         """ Executes an iterative solver """
         norm0, norm = self._initialize()
-        counter = 0
-        self.print_info(counter, norm/norm0, norm0=norm0)
-        while counter < ilimit and norm > atol and norm/norm0 > rtol:
+        self.counter = 0
+        self.print_info(self.counter, norm/norm0, norm0=norm0)
+        while self.counter < ilimit and norm > atol and norm/norm0 > rtol:
             self._operation()
             norm = self._norm()
-            counter += 1
-            self.print_info(counter, norm/norm0, norm0=norm)
+            self.counter += 1
+            self.print_info(self.counter, norm/norm0, norm0=norm)
             #self.print_info(counter, norm, norm0=norm0)
         success = not (norm > atol and norm/norm0 > rtol)
         success = success and (not numpy.isinf(norm))
@@ -1078,7 +1079,9 @@ class Newton(NonlinearSolver):
         """ Find a search direction and apply a line search """
         system = self._system
         system.vec['df'].array[:] = -system.vec['f'].array[:]
-        system.linearize()
+        #system.linearize()
+        if self.counter % 1 == 0:
+            system.linearize()
         system.solve_dFdu()
         system.solve_line_search()
 

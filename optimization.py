@@ -25,7 +25,7 @@ class Optimization(object):
 
     def _add_var(self, typ, var, value=0.0, scale=1.0,
                  lower=None, upper=None,
-                 get_jacs=None, linear=False):
+                 get_jacs=None, linear=False, sys=None):
         """ Wrapped by next three methods """
         var_id = self._system.get_id(var)
         var_name = self._get_name(var_id)
@@ -35,7 +35,8 @@ class Optimization(object):
                                           'lower': lower,
                                           'upper': upper,
                                           'get_jacs': get_jacs,
-                                          'linear': linear}
+                                          'linear': linear,
+                                          'sys': sys}
 
     def add_design_variable(self, var, value=None, scale=1.0, 
                             lower=None, upper=None):
@@ -48,10 +49,10 @@ class Optimization(object):
         self._add_var('func', var)
 
     def add_constraint(self, var, lower=None, upper=None,
-                       get_jacs=None, linear=False):
+                       get_jacs=None, linear=False, sys=None):
         """ Self-explanatory; part of API """
         self._add_var('func', var, lower=lower, upper=upper,
-                      get_jacs=get_jacs, linear=linear)
+                      get_jacs=get_jacs, linear=linear, sys=sys)
 
     def add_sens_callback(self, callback):
         self.sens_callback = callback
@@ -113,12 +114,39 @@ class Optimization(object):
             func = variables['func'][func_name]
             func_id = func['ID']
             get_jacs = func['get_jacs']
+            sys = func['sys']
             nfunc = system.vec['u'][func_id].shape[0]
 
             time_start = time.time()
 
             sens_dict[func_name] = {}
-            if func['get_jacs'] is None:
+            if get_jacs is not None:
+                jacs = get_jacs()
+                for dv_var in jacs:
+                    dv_id = self._system.get_id(dv_var)
+                    dv_name = self._get_name(dv_id)
+                    sens_dict[func_name][dv_name] \
+                        = jacs[dv_var]
+            elif sys is not None:
+                for dv_name in variables['dv'].keys():
+                    dv_id = variables['dv'][dv_name]['ID']
+                    if dv_id in sys.vec['u']:
+                        ndv = system.vec['u'][dv_id].shape[0]
+
+                        sens_dict[func_name][dv_name] \
+                            = numpy.zeros((nfunc, ndv))
+
+                for ind in xrange(nfunc):
+                    temp, success = sys.compute_derivatives('rev', func_id, ind, False)#True)
+                    fail = fail or not success
+
+                    for dv_name in variables['dv'].keys():
+                        dv_id = variables['dv'][dv_name]['ID']
+
+                        if dv_id in sys.vec['u']:
+                            sens_dict[func_name][dv_name][ind, :] \
+                                = sys.vec['df'][dv_id]
+            else:
                 for dv_name in variables['dv'].keys():
                     dv_id = variables['dv'][dv_name]['ID']
                     ndv = system.vec['u'][dv_id].shape[0]
@@ -127,7 +155,7 @@ class Optimization(object):
                         = numpy.zeros((nfunc, ndv))
 
                 for ind in xrange(nfunc):
-                    temp, success = system.compute_derivatives('rev', func_id, ind, True)
+                    temp, success = system.compute_derivatives('rev', func_id, ind, False)#True)
                     fail = fail or not success
 
                     for dv_name in variables['dv'].keys():
@@ -135,15 +163,9 @@ class Optimization(object):
 
                         sens_dict[func_name][dv_name][ind, :] \
                             = system.vec['df'][dv_id]
-            else:
-                jacs = get_jacs()
-                for dv_var in jacs:
-                    dv_id = self._system.get_id(dv_var)
-                    dv_name = self._get_name(dv_id)
-                    sens_dict[func_name][dv_name] \
-                        = jacs[dv_var]
 
             print 'Done function:', func_id, time.time() - time_start
+            print 'Fail:', fail
             print
 
         #print 'DVs:'
@@ -194,14 +216,12 @@ class Optimization(object):
             upper = func['upper']
             linear = func['linear']
             get_jacs = func['get_jacs']
+            sys = func['sys']
             size = system.vec['u'](func_id).shape[0]
             if lower is None and upper is None:
                 opt_prob.addObj(func_name)
             else:
-                if func['get_jacs'] is None:
-                    opt_prob.addConGroup(func_name, size,
-                                         lower=lower, upper=upper)
-                else:
+                if get_jacs is not None:
                     jacs_var = get_jacs()
 
                     dv_names = []
@@ -215,6 +235,18 @@ class Optimization(object):
                     opt_prob.addConGroup(func_name, size,
                                          wrt=dv_names,
                                          jac=jacs, linear=linear,
+                                         lower=lower, upper=upper)
+                elif sys is not None:
+                    dv_names = []
+                    for dv_name in variables['dv'].keys():
+                        dv_id = variables['dv'][dv_name]['ID']
+                        if dv_id in sys.vec['u']:
+                            dv_names.append(dv_name)
+                    opt_prob.addConGroup(func_name, size,
+                                         wrt=dv_names,
+                                         lower=lower, upper=upper)                    
+                else:
+                    opt_prob.addConGroup(func_name, size,
                                          lower=lower, upper=upper)
 
         if options is None:

@@ -57,20 +57,20 @@ class SysTemp(ExplicitSystem):
         uvec = self.vec['u']
         alt = pvec('h') * 1e3
         temp = uvec('Temp')
+
         alt_boundary = 11000
+        self.tropos = alt <= (alt_boundary - self.epsilon)
+        self.strato = alt >  (alt_boundary + self.epsilon)
+        self.smooth = numpy.logical_and(~self.tropos, ~self.strato)
 
         a = self.coefs[0]
         b = self.coefs[1]
         c = self.coefs[2]
         d = self.coefs[3]
-
-        tropos = alt <= (alt_boundary - self.epsilon)
-        strato = alt >  (alt_boundary + self.epsilon)
-        smooth = numpy.logical_and(~tropos, ~strato)
         temp[:] = 0.0
-        temp[:] += tropos * (288.16 - 6.5e-3 * alt) / 1e2
-        temp[:] += strato * 216.65 / 1e2
-        temp[:] += smooth * (a*alt**3 + b*alt**2 + c*alt + d) / 1e2
+        temp[:] += self.tropos * (288.16 - 6.5e-3 * alt) / 1e2
+        temp[:] += self.strato * 216.65 / 1e2
+        temp[:] += self.smooth * (a*alt**3 + b*alt**2 + c*alt + d) / 1e2        
 
     def apply_dGdp(self, args):
         """ compute temperature derivative wrt altitude """
@@ -82,7 +82,6 @@ class SysTemp(ExplicitSystem):
         dalt = dpvec('h')
         dtemp = dgvec('Temp')
         alt = pvec('h') * 1e3
-        alt_boundary = 11000
 
         a = self.coefs[0]
         b = self.coefs[1]
@@ -91,22 +90,16 @@ class SysTemp(ExplicitSystem):
         if self.mode == 'fwd':
             dtemp[:] = 0.0
             if self.get_id('h') in args:
-                tropos = alt <= (alt_boundary - self.epsilon)
-                strato = alt >  (alt_boundary + self.epsilon)
-                smooth = numpy.logical_and(~tropos, ~strato)
-                dtemp[:] += tropos * (-6.5e-3) * dalt * 1e3 / 1e2
-                dtemp[:] += strato * 0.0
-                dtemp[:] += smooth * (3*a*alt**2 + 2*b*alt + c) *\
+                dtemp[:] += self.tropos * (-6.5e-3) * dalt * 1e3 / 1e2
+                dtemp[:] += self.strato * 0.0
+                dtemp[:] += self.smooth * (3*a*alt**2 + 2*b*alt + c) *\
                     dalt * 1e3 / 1e2
         if self.mode == 'rev':
             dalt[:] = 0.0
             if self.get_id('h') in args:
-                tropos = alt <= (alt_boundary - self.epsilon)
-                strato = alt >  (alt_boundary + self.epsilon)
-                smooth = numpy.logical_and(~tropos, ~strato)
-                dalt[:] += tropos * (-6.5e-3) * dtemp * 1e3 / 1e2
-                dalt[:] += strato * 0.0
-                dalt[:] += smooth * (3*a*alt**2 + 2*b*alt + c) *\
+                dalt[:] += self.tropos * (-6.5e-3) * dtemp * 1e3 / 1e2
+                dalt[:] += self.strato * 0.0
+                dalt[:] += self.smooth * (3*a*alt**2 + 2*b*alt + c) *\
                     dtemp * 1e3 / 1e2
 
 class SysRho(ExplicitSystem):
@@ -164,20 +157,46 @@ class SysRho(ExplicitSystem):
         c = self.coefs[2]
         d = self.coefs[3]
 
-        tropos = alt <= (alt_boundary - self.epsilon)
-        strato = alt >  (alt_boundary + self.epsilon)
-        smooth = numpy.logical_and(~tropos, ~strato)
+        self.tropos = alt <= (alt_boundary - self.epsilon)
+        self.strato = alt >  (alt_boundary + self.epsilon)
+        self.smooth = numpy.logical_and(~self.tropos, ~self.strato)
         pressure[:] = 0.0
         rho[:] = 0.0
-        pressure[:] += tropos * (101325*(1-0.0065*alt/288.16)**5.2561)
-        pressure[:] += strato * (22632*numpy.exp(-9.81*(alt-alt_boundary)/
+        pressure[:] += self.tropos * (101325*(1-0.0065*alt/288.16)**5.2561)
+        pressure[:] += self.strato * (22632*numpy.exp(-9.81*(alt-alt_boundary)/
                                                   (288*216.65)))
-        pressure[:] += smooth * (a*alt**3 + b*alt**2 + c*alt + d)
+        pressure[:] += self.smooth * (a*alt**3 + b*alt**2 + c*alt + d)
         rho[:] += pressure / (288 * temp)
+
+    def linearize(self):
+        pvec = self.vec['p']
+        alt = pvec('h') * 1e3
+        temp = pvec('Temp') * 1e2
+        alt_boundary = 11000
+
+        a = self.coefs[0]
+        b = self.coefs[1]
+        c = self.coefs[2]
+        d = self.coefs[3]
+
+        self.dpressure = numpy.zeros(self.num_elem+1)
+        self.pressure = numpy.zeros(self.num_elem+1)
+
+        self.dpressure[:] += self.tropos * (101325*5.2561*(-0.0065/288.16)*
+                                       (1-0.0065*alt/288.16)**4.2561)
+        self.dpressure[:] += self.strato * (22632*(-9.81/(288*216.65))*
+                                       numpy.exp(9.81*11000/(288*216.65))*
+                                       numpy.exp(-9.81*alt/(288*216.65)))
+        self.dpressure[:] += self.smooth * (3*a*alt**2 + 2*b*alt + c)
+        
+        self.pressure[:] += self.tropos * (101325*(1-0.0065*alt/
+                                              288.16)**5.2561)
+        self.pressure[:] += self.strato * (22632*numpy.exp(-9.81*(alt-alt_boundary)/
+                                                      (288*216.65)))
+        self.pressure[:] += self.smooth * (a*alt**3 + b*alt**2 + c*alt + d)
 
     def apply_dGdp(self, args):
         """ compute density derivative wrt altitude and temperature """
-
         dpvec = self.vec['dp']
         dgvec = self.vec['dg']
         pvec = self.vec['p']
@@ -187,85 +206,24 @@ class SysRho(ExplicitSystem):
         drho = dgvec('rho')
         alt = pvec('h') * 1e3
         temp = pvec('Temp') * 1e2
-        alt_boundary = 11000
-        dpressure = numpy.zeros(self.num_elem+1)
-        pressure = numpy.zeros(self.num_elem+1)
-
-        a = self.coefs[0]
-        b = self.coefs[1]
-        c = self.coefs[2]
-        d = self.coefs[3]
 
         if self.mode == 'fwd':
             drho[:] = 0.0
             if self.get_id('h') in args:
-                tropos = alt <= (alt_boundary - self.epsilon)
-                strato = alt >  (alt_boundary + self.epsilon)
-                smooth = numpy.logical_and(~tropos, ~strato)
-                dpressure[:] = 0.0
-                drho[:] = 0.0
-                dpressure[:] += tropos * (101325*5.2561*(-0.0065/288.16)*
-                                          (1-0.0065*alt/288.16)**4.2561)
-                dpressure[:] += strato * (22632*(-9.81/(288*216.65))*
-                                          numpy.exp(9.81*11000/(288*216.65))*
-                                          numpy.exp(-9.81*alt/(288*216.65)))
-                dpressure[:] += smooth * (3*a*alt**2 + 2*b*alt + c)
-                drho[:] += dpressure * dalt / (288 * temp) * 1e3
+                drho[:] += self.dpressure * dalt / (288 * temp) * 1e3
 
             if self.get_id('Temp') in args:
-                tropos = alt <= (alt_boundary - self.epsilon)
-                strato = alt >  (alt_boundary + self.epsilon)
-                smooth = numpy.logical_and(~tropos, ~strato)
-                pressure[:] = 0.0
-                drho[:] = 0.0
-                pressure[:] += tropos * (101325*(1-0.0065*alt/
-                                                 288.16)**5.2561)
-                pressure[:] += strato * (22632*numpy.exp(-9.81*(alt-alt_boundary)/
-                                                          (288*216.65)))
-                pressure[:] += smooth * (a*alt**3 + b*alt**2 + c*alt + d)
-                drho[:] += -pressure * dtemp / (288 * temp**2) * 1e2
+                drho[:] += -self.pressure * dtemp / (288 * temp**2) * 1e2
 
         if self.mode == 'rev':
             dalt[:] = 0.0
             dtemp[:] = 0.0
             if self.get_id('h') in args:
-                for index in xrange(self.num_elem+1):
-                    if alt[index] <= (alt_boundary - self.epsilon):
-                        dpressure = 101325*5.2561*(-0.0065/288.16)*\
-                            (1-0.0065*alt[index]/288.16)**4.2561
-                        dalt[index] += dpressure * drho[index] /\
-                            (288*temp[index])*1e3
-                    elif alt[index] >= (alt_boundary + self.epsilon):
-                        dpressure = (22632*(-9.81/(288*216.65))*
-                                     numpy.exp(9.81*11000/(288*216.65))*
-                                     numpy.exp(-9.81*alt[index]/
-                                                (288*216.65)))
-                        dalt[index] += dpressure * drho[index] /\
-                            (288*temp[index])*1e3
-                    else:
-                        h_star = alt[index]
-                        dpressure = 3*a*h_star**2 + 2*b*h_star + c
-                        dalt[index] += dpressure * drho[index] /\
-                            (288*temp[index])*1e3
+                dalt[:] += self.dpressure * drho / (288 * temp) * 1e3
+
             if self.get_id('Temp') in args:
-                for index in xrange(self.num_elem+1):
-                    if alt[index] <= (alt_boundary - self.epsilon):
-                        pressure = 101325*(1-0.0065*alt[index]/
-                                           288.16)**5.2561
-                        dtemp[index] += -pressure / (288*temp[index]**2) *\
-                            drho[index] * 1e2
-                    elif alt[index] >= (alt_boundary + self.epsilon):
-                        pressure = 22632*numpy.exp(-9.81*(alt[index]-
-                                                          alt_boundary)/
-                                                    (288*216.65))
-                        dtemp[index] += -pressure / (288*temp[index]**2) *\
-                            drho[index] * 1e2
-                    else:
-                        h_star = alt[index]
-                        pressure = (a*h_star**3 + b*h_star**2 + c*h_star + 
-                                    d)
-                        dtemp[index] += -pressure / (288*temp[index]**2) *\
-                            drho[index] * 1e2
+                dtemp[:] += -self.pressure * drho / (288 * temp**2) * 1e2
+
 
 class SysSpeed(ExplicitSystem):
     """ compute airspeed using specified Mach number """
@@ -306,6 +264,17 @@ class SysSpeed(ExplicitSystem):
         else:
             speed[:] = mach * numpy.sqrt(gamma*gas_c*temp) / 1e2
 
+    def linearize(self):
+        pvec = self.vec['p']
+        temp = pvec('Temp') * 1e2
+        mach = pvec('M_spline')
+
+        gamma = 1.4
+        gas_c = 287
+
+        self.ds_dM = numpy.sqrt(gamma*gas_c*temp)
+        self.ds_dT = 0.5 * mach * gamma * gas_c / numpy.sqrt(gamma*gas_c*temp)
+
     def apply_dGdp(self, args):
         """ compute speed derivatives wrt temperature and Mach number """
 
@@ -321,12 +290,6 @@ class SysSpeed(ExplicitSystem):
         dspeed_spline = dpvec('v_spline')
         dspeed = dgvec('v')
 
-        gamma = 1.4
-        gas_c = 287
-
-        ds_dM = numpy.sqrt(gamma*gas_c*temp)
-        ds_dT = 0.5 * mach * gamma * gas_c / numpy.sqrt(gamma*gas_c*temp)
-
         if self.mode == 'fwd':
             dspeed[:] = 0.0
             if self.v_specified:
@@ -334,9 +297,9 @@ class SysSpeed(ExplicitSystem):
                     dspeed[:] += dspeed_spline
             else:
                 if self.get_id('Temp') in args:
-                    dspeed[:] += ds_dT * dtemp
+                    dspeed[:] += self.ds_dT * dtemp
                 if self.get_id('M_spline') in args:
-                    dspeed[:] += ds_dM * dmach / 1e2
+                    dspeed[:] += self.ds_dM * dmach / 1e2
         
         elif self.mode == 'rev':
             dtemp[:] = 0.0
@@ -347,9 +310,9 @@ class SysSpeed(ExplicitSystem):
                     dspeed_spline[:] += dspeed
             else:
                 if self.get_id('Temp') in args:
-                    dtemp[:] += ds_dT * dspeed
+                    dtemp[:] += self.ds_dT * dspeed
                 if self.get_id('M_spline') in args:
-                    dmach[:] += ds_dM * dspeed / 1e2
+                    dmach[:] += self.ds_dM * dspeed / 1e2
 
 class SysMach(ExplicitSystem):
     """ compute Mach number using specified airspeed and temperature """
@@ -390,6 +353,18 @@ class SysMach(ExplicitSystem):
         else:
             mach[:] = mach_spline[:]
 
+    def linearize(self):
+        pvec = self.vec['p']
+        temp = pvec('Temp') * 1e2
+        speed = pvec('v_spline') * 1e2
+
+        gamma = 1.4
+        gas_c = 287
+
+        self.ds_dv = 1/numpy.sqrt(gamma*gas_c*temp)
+        self.ds_dT = -0.5*speed/(numpy.sqrt(gamma*gas_c)*(temp)**(3/2))
+        
+
     def apply_dGdp(self, args):
         """ compute Mach number derivatives wrt temperature and airspeed """
 
@@ -405,12 +380,6 @@ class SysMach(ExplicitSystem):
         dmach_spline = dpvec('M_spline')
         dspeed = dpvec('v_spline')
 
-        gamma = 1.4
-        gas_c = 287
-
-        ds_dv = 1/numpy.sqrt(gamma*gas_c*temp)
-        ds_dT = -0.5*speed/(numpy.sqrt(gamma*gas_c)*(temp)**(3/2))
-
         if self.mode == 'fwd':
             dmach[:] = 0.0
             if not self.v_specified:
@@ -418,9 +387,9 @@ class SysMach(ExplicitSystem):
                     dmach[:] += dmach_spline
             else:
                 if self.get_id('Temp') in args:
-                    dmach[:] += ds_dT * dtemp * 1e2
+                    dmach[:] += self.ds_dT * dtemp * 1e2
                 if self.get_id('v_spline') in args:
-                    dmach[:] += ds_dv * dspeed * 1e2
+                    dmach[:] += self.ds_dv * dspeed * 1e2
         elif self.mode == 'rev':
             dtemp[:] = 0.0
             dspeed[:] = 0.0
@@ -430,6 +399,6 @@ class SysMach(ExplicitSystem):
                     dmach_spline[:] += dmach
             else:
                 if self.get_id('Temp') in args:
-                    dtemp[:] += ds_dT * dmach * 1e2
+                    dtemp[:] += self.ds_dT * dmach * 1e2
                 if self.get_id('v_spline') in args:
-                    dspeed[:] += ds_dv * dmach * 1e2
+                    dspeed[:] += self.ds_dv * dmach * 1e2

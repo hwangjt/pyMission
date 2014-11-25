@@ -267,7 +267,7 @@ class SysTripanCDSurrogate(ExplicitSystem):
             if self.get_id('eta') in args:
                 deta[:] += self.J_CD[3] * dCD * 180 / numpy.pi
 
-class SysTripanCMSurrogate(ExplicitSystem):
+class SysTripanCMSurrogate(ImplicitSystem):
 
     def _declare(self):
 
