@@ -18,6 +18,7 @@ class Optimization(object):
         self._system = system
         self._variables = {'dv': {}, 'func': {}}
         self.sens_callback = None
+        self.exit_flag = 0
 
     def _get_name(self, var_id):
         """ Returns unique string for the variable """
@@ -257,3 +258,11 @@ class Optimization(object):
         #opt.setOption('Verify level', 3)
         sol = opt(opt_prob, sens=self.sens_func, storeHistory='hist.hst')
         print sol
+
+        try:
+            exit_status = sol.optInform['value']
+            self.exit_flag = 1
+            if exit_status > 2: # bad
+                self.exit_flag = 0
+        except KeyError: #nothing is here, so something bad happened!
+            self.exit_flag = 0

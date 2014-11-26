@@ -387,7 +387,7 @@ else:
     main.set_initial_var_values()
 
 
-    if False:
+    if True:
         main('pax/flight').value = numpy.array(
             [[0,0,0],
              [0,0,0],
@@ -419,7 +419,7 @@ else:
         call(['rm', 'SNOPT_summary.out'])
 
 
-    if False:
+    if True:
         main.compute(output=True)
         print 'Profit', main.vec['u']('profit')
         for i in xrange(6):
