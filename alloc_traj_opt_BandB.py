@@ -389,7 +389,7 @@ if False:
     print main.vec['u'].array.shape[0]
 
 
-for copy in xrange(num_routes * num_new_ac):
+for copy in xrange(0):#num_routes * num_new_ac):
     opt = Optimization(main(('mission', copy)))
     opt.add_objective(('fuelburn', copy))
     opt.add_design_variable(('h_pt', copy), #scale=5e-2,

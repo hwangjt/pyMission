@@ -5,7 +5,7 @@
 misc_data = {}
 misc_data['cost/fuel'] = 0.2431 # $/lb
 misc_data['turnaround'] = 1.0 # hr
-misc_data['weight/pax'] = 84 # kg
+misc_data['weight/pax'] = 84 * 9.81 # N
 
 ##########################
 # a/c parameters
