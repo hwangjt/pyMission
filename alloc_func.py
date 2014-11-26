@@ -80,7 +80,7 @@ class Profit(ExplicitSystem):
         num_routes, num_ac = self.num_routes, self.num_ac
         num_existing_ac, num_new_ac = self.num_existing_ac, self.num_new_ac
 
-        cost_fuel = misc_data['cost/fuel']
+        cost_fuel = misc_data['cost/fuel'] * 2.2 / 9.81
 
         profit = self.vec['u']('profit')
         pax_flt = self.vec['p']('pax/flight').reshape((num_routes, num_ac), order='F')
@@ -112,7 +112,7 @@ class Profit(ExplicitSystem):
         num_routes, num_ac = self.num_routes, self.num_ac
         num_existing_ac, num_new_ac = self.num_existing_ac, self.num_new_ac
 
-        cost_fuel = misc_data['cost/fuel']
+        cost_fuel = misc_data['cost/fuel'] * 2.2 / 9.81
 
         profit = self.vec['u']('profit')
         pax_flt = self.vec['p']('pax/flight').reshape((num_routes, num_ac), order='F')

@@ -29,8 +29,8 @@ fileloc.close()
 gamma_lb = numpy.tan(-35.0 * (numpy.pi/180.0))/1e-1
 gamma_ub = numpy.tan(35.0 * (numpy.pi/180.0))/1e-1
                 
-execfile('problem_11rt_2ac_v2.py')
-#execfile('problem_3rt_2ac.py')
+#execfile('problem_11rt_2ac_v2.py')
+execfile('problem_3rt_2ac.py')
 
 ############################
 # INITIALIZE MISSION OBJECTS
@@ -83,7 +83,7 @@ for irt in xrange(num_routes):
     lins = numpy.linspace(0, 1, num_cp)
     x_pt = mrange * 1e3 * \
            (1-numpy.cos(lins*numpy.pi))/2/1e6
-    M_pt = numpy.ones(num_cp) * 0.75
+    M_pt = numpy.ones(num_cp) * 0.82
     h_pt = 10 * numpy.sin(numpy.pi * x_pt / (mrange/1e3))
     v_pt = numpy.zeros(num_cp)
 
@@ -387,6 +387,18 @@ else:
     main.set_initial_var_values()
 
 
+    if False:
+        main('pax/flight').value = numpy.array(
+            [[0,0,0],
+             [0,0,0],
+             [300,0,300],
+             [400,400,400]]).flatten(order='F')
+        main('flights/day').value = numpy.array(
+            [[0,0,0],
+             [0,0,0],
+             [2,0,1],
+             [1,1,1]]).flatten(order='F')
+
 
     for copy in xrange(num_routes * num_new_ac):
         opt = Optimization(main(('mission', copy)))
@@ -406,6 +418,13 @@ else:
         call(['mv', 'hist.hst', folder_path+'/traj_'+str(copy)+'_hist.hst'])
         call(['rm', 'SNOPT_summary.out'])
 
+
+    if False:
+        main.compute(output=True)
+        print 'Profit', main.vec['u']('profit')
+        for i in xrange(6):
+            print 'Fuel ' + str(i), main.vec['u'](('fuelburn',i)) * 1e-1 / 9.81 * 2.2
+        exit()
 
 
     opt = Optimization(main)
