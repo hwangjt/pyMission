@@ -449,6 +449,9 @@ prob.pax_flt  = 10*numpy.ones(num_int)
 prob.node = node_num
 prob.tree = tree
 
+prob.flt_day[:] = numpy.array([0, 0, 6, 0, 0, 0, 0, 2, 2, 6, 0, 0])/2.0
+prob.pax_flt[:] = numpy.array([0, 0, 122, 0, 0, 0, 0, 294, 294, 400, 0 ,0])/2.0
+
 Aset = []
 Aset.append(prob)
 
