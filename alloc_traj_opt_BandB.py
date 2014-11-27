@@ -535,13 +535,13 @@ while len(Aset) > 0 and _iter <= iter_max:
             opt.add_constraint(('gamma', copy), lower=gamma_lb, upper=gamma_ub,
                                get_jacs=main(('gamma', copy)).get_jacs, linear=True)
         opt('SNOPT')
-        call(['mv', 'SNOPT_summary.out', folder_path+'/relaxed_'+str(funCall-1)+'_SNOPT.out'])
+        call(['mv', 'SNOPT_print.out', 'results/relaxed_'+str(funCall-1)+'_SNOPT.out'])
         call(['mv', 'hist.hst', folder_path+'/relaxed_'+str(funCall-1)+'_hist.hst'])
-        call(['rm', 'SNOPT_print.out'])
+        call(['rm', 'SNOPT_summary.out'])
 
-    Aset[Fsub_i].pax_flt = main.vec['u']('pax/flight')
-    Aset[Fsub_i].flt_day = main.vec['u']('flights/day')
-    Aset[Fsub_i].b_F = main.vec['u']('profit')
+    Aset[Fsub_i].pax_flt = numpy.array(main.vec['u']('pax/flight'))
+    Aset[Fsub_i].flt_day = numpy.array(main.vec['u']('flights/day'))
+    Aset[Fsub_i].b_F = main.vec['u']('profit')[0]
     Aset[Fsub_i].eflag = opt.exit_flag
 
     # write status file
@@ -553,8 +553,8 @@ while len(Aset) > 0 and _iter <= iter_max:
     numpy.savetxt('status.dat', status)
 
     if _iter == 1:
-        flt_best_relax = Aset[Fsub_i].flt_day
-        pax_best_relax = Aset[Fsub_i].pax_flt
+        flt_best_relax = numpy.array(Aset[Fsub_i].flt_day)
+        pax_best_relax = numpy.array(Aset[Fsub_i].pax_flt)
         b_F_best_relax = Aset[Fsub_i].b_F
 
     if ((Aset[Fsub_i].eflag >= 1) and (Aset[Fsub_i].b_F < U_best)):
@@ -566,8 +566,8 @@ while len(Aset) > 0 and _iter <= iter_max:
             print '======================='
             # can_x = [can_x, Aset[Fsub_i].x_F]
             can_F = [can_F, Aset[Fsub_i].b_F]
-            pax_flt_best = Aset[Fsub_i].pax_flt
-            flt_day_best = Aset[Fsub_i].flt_day
+            pax_flt_best = numpy.array(Aset[Fsub_i].pax_flt)
+            flt_day_best = numpy.array(Aset[Fsub_i].flt_day)
             f_best = Aset[Fsub_i].b_F
 
             # Discard nodes within percentage of the tolerance gap of the best feasible solution (integer)
