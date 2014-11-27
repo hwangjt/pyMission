@@ -30,7 +30,8 @@ gamma_lb = numpy.tan(-35.0 * (numpy.pi/180.0))/1e-1
 gamma_ub = numpy.tan(35.0 * (numpy.pi/180.0))/1e-1
                 
 #execfile('problem_11rt_2ac_v2.py')
-execfile('problem_3rt_2ac.py')
+#execfile('problem_3rt_2ac.py')
+execfile('problem_3rt_3ex1newBWB.py')
 
 ############################
 # INITIALIZE MISSION OBJECTS
@@ -206,6 +207,8 @@ for irt in xrange(num_routes):
                                                            subsystems=[
                                                                SysCLTar('CL_tar', copy=copy,
                                                                         num_elem=num_elem,
+                                                                        num_existing_ac=num_existing_ac,
+                                                                        num_routes=num_routes,
                                                                         S=params['S'],
                                                                         wt_pax=wt_pax,
                                                                         ac_w=params['ac_w']),                                                             
@@ -260,6 +263,8 @@ for irt in xrange(num_routes):
                                                            subsystems=[
                                                                SysCTTar('CT_tar', copy=copy,
                                                                         num_elem=num_elem,
+                                                                        num_existing_ac=num_existing_ac,
+                                                                        num_routes=num_routes,
                                                                         S=params['S'],
                                                                         wt_pax=wt_pax,
                                                                         ac_w=params['ac_w']),
@@ -380,14 +385,14 @@ else:
         else:
             inac = iac - num_existing_ac
             ac_name = ac_data['new_ac'][inac]
-        avail[iac] = 24 * ac_data['number', ac_name]
+        avail[iac] = 12 * ac_data['number', ac_name]
 
 
 
     main.set_initial_var_values()
 
 
-    if True:
+    if False:
         main('pax/flight').value = numpy.array(
             [[0,0,0],
              [0,0,0],
@@ -419,7 +424,7 @@ else:
         call(['rm', 'SNOPT_summary.out'])
 
 
-    if True:
+    if False:
         main.compute(output=True)
         print 'Profit', main.vec['u']('profit')
         for i in xrange(6):

@@ -23,10 +23,10 @@ ac_data['capacity', 'CRM'] = 300
 # ac_data['capacity', 'BWB'] = 400
 
 #
-ac_data['number', 'B738'] = 10
-ac_data['number', 'B777'] = 10
-ac_data['number', 'B747'] = 10
-ac_data['number', 'CRM'] = 10
+ac_data['number', 'B738'] = 10 * 2
+ac_data['number', 'B777'] = 12 * 2
+ac_data['number', 'B747'] = 12 * 2
+ac_data['number', 'CRM'] = 4 * 2
 # ac_data['number', 'BWB'] = 10
 
 # maintenance hours / block hours

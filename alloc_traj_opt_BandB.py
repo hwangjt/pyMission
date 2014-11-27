@@ -189,8 +189,8 @@ for irt in xrange(num_routes):
                                  GL_GS_atol=1e-9,#10,
                                  GL_NT_rtol=1e-9,#14,
                                  GL_NT_atol=1e-9,#14,
-                                 NL_rtol=1e-9,
-                                 NL_atol=1e-9,
+                                 NL_rtol=1e-12,
+                                 NL_atol=1e-12,
                                  LN_rtol=1e-20,#14,
                                  LN_atol=1e-14,#14,
                                  PC_rtol=1e-6,
@@ -209,6 +209,8 @@ for irt in xrange(num_routes):
                                          subsystems=[
                                     SysCLTar('CL_tar', copy=copy,
                                              num_elem=num_elem,
+                                             num_existing_ac=num_existing_ac,
+                                             num_routes=num_routes,
                                              S=params['S'],
                                              wt_pax=wt_pax,
                                              ac_w=params['ac_w']),
@@ -263,6 +265,8 @@ for irt in xrange(num_routes):
                                          subsystems=[
                                     SysCTTar('CT_tar', copy=copy,
                                              num_elem=num_elem,
+                                             num_existing_ac=num_existing_ac,
+                                             num_routes=num_routes,
                                              S=params['S'],
                                              wt_pax=wt_pax,
                                              ac_w=params['ac_w']),
@@ -389,7 +393,7 @@ if False:
     print main.vec['u'].array.shape[0]
 
 
-for copy in xrange(0):#num_routes * num_new_ac):
+for copy in xrange(num_routes * num_new_ac):
     opt = Optimization(main(('mission', copy)))
     opt.add_objective(('fuelburn', copy))
     opt.add_design_variable(('h_pt', copy), #scale=5e-2,

@@ -37,6 +37,10 @@ class SysCLTar(ExplicitSystem):
                           ac_w (weight of aircraft + payload)
         """
 
+        num_existing_ac = self.kwargs['num_existing_ac']
+        num_routes = self.kwargs['num_routes']
+        offset = num_existing_ac * num_routes
+
         self.num_elem = self.kwargs['num_elem']
         self.wing_area = self.kwargs['S']
         self.ac_weight = self.kwargs['ac_w']
@@ -50,7 +54,7 @@ class SysCLTar(ExplicitSystem):
         self._declare_argument('alpha', indices=ind_pts)
         self._declare_argument('rho', indices=ind_pts)
         self._declare_argument('v', indices=ind_pts)
-        self._declare_argument(('pax/flight', 0), indices=[self.copy])
+        self._declare_argument(('pax/flight', 0), indices=[offset + self.copy])
 
     def apply_G(self):
         """ Compute lift coefficient based on other variables at the
@@ -195,6 +199,10 @@ class SysCTTar(ExplicitSystem):
                           ac_w (weight of aircraft + payload)
         """
 
+        num_existing_ac = self.kwargs['num_existing_ac']
+        num_routes = self.kwargs['num_routes']
+        offset = num_existing_ac * num_routes
+
         self.num_elem = self.kwargs['num_elem']
         self.wing_area = self.kwargs['S']
         self.ac_weight = self.kwargs['ac_w']
@@ -208,7 +216,7 @@ class SysCTTar(ExplicitSystem):
         self._declare_argument('alpha', indices=ind_pts)
         self._declare_argument('rho', indices=ind_pts)
         self._declare_argument('v', indices=ind_pts)
-        self._declare_argument(('pax/flight', 0), indices=[self.copy])
+        self._declare_argument(('pax/flight', 0), indices=[offset + self.copy])
 
     def apply_G(self):
         """ Compute thrust coefficient using variables at the control
